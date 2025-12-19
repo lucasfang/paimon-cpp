@@ -21,8 +21,10 @@ if(PAIMON_ENABLE_ORC)
         orc_input_stream_impl.cpp
         orc_output_stream_impl.cpp
         orc_adapter.cpp
+        orc_reader_wrapper.cpp
         orc_stats_extractor.cpp
-        orc_format_writer.cpp)
+        orc_format_writer.cpp
+        read_range_generator.cpp)
 
     add_paimon_lib(paimon_orc_file_format
                    SOURCES
