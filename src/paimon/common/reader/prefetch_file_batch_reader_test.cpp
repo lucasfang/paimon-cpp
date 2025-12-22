@@ -81,8 +81,10 @@ class PrefetchFileBatchReaderTest : public ::testing::Test,
         ASSERT_TRUE(arrow::ExportSchema(schema, &c_schema).ok());
         ASSERT_OK_AND_ASSIGN(
             std::unique_ptr<FileFormat> file_format,
-            FileFormatFactory::Get(file_format_str, {{"parquet.write.max-row-group-length",
-                                                      std::to_string(row_index_stride)}}));
+            FileFormatFactory::Get(
+                file_format_str,
+                {{"parquet.write.max-row-group-length", std::to_string(row_index_stride)},
+                 {"orc.row.index.stride", std::to_string(row_index_stride)}}));
 
         ASSERT_OK_AND_ASSIGN(auto writer_builder,
                              file_format->CreateWriterBuilder(&c_schema, 1024));
@@ -166,7 +168,7 @@ class PrefetchFileBatchReaderTest : public ::testing::Test,
 };
 
 std::vector<std::string> GetTestValues() {
-    return {"parquet"};
+    return {"parquet", "orc"};
 }
 
 INSTANTIATE_TEST_SUITE_P(FileFormat, PrefetchFileBatchReaderTest,
