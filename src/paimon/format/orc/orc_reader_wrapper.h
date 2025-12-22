@@ -36,7 +36,7 @@
 
 namespace paimon::orc {
 
-// The FileReaderWrapper is a decorator class designed to support GetNextRowToRead.
+// The OrcReaderWrapper is a decorator class designed to support GetNextRowToRead.
 class OrcReaderWrapper {
  public:
     ~OrcReaderWrapper() {
@@ -54,7 +54,7 @@ class OrcReaderWrapper {
             ReadRangeGenerator::Create(reader.get(), natural_read_size, options));
         auto reader_wrapper = std::unique_ptr<OrcReaderWrapper>(
             new OrcReaderWrapper(std::move(reader), std::move(range_generator), file_name,
-                                 batch_size, std::move(arrow_pool), orc_pool));
+                                 batch_size, arrow_pool, orc_pool));
         return reader_wrapper;
     }
 
@@ -76,7 +76,7 @@ class OrcReaderWrapper {
     }
 
     Status SetReadRanges(const std::vector<std::pair<uint64_t, uint64_t>>& read_ranges) {
-        // this is just a hint, apache orc not support this.
+        // Intentionally a no-op: SetReadRanges is a best-effort hint only.
         return Status::OK();
     }
 
@@ -101,7 +101,7 @@ class OrcReaderWrapper {
           range_generator_(std::move(range_generator)),
           file_name_(file_name),
           batch_size_(batch_size),
-          arrow_pool_(std::move(arrow_pool)),
+          arrow_pool_(arrow_pool),
           orc_pool_(orc_pool) {}
 
     std::unique_ptr<::orc::Reader> reader_;

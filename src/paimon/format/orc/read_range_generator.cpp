@@ -142,7 +142,6 @@ double ReadRangeGenerator::BytesPerGroup(const std::vector<uint64_t>& column_ids
     if (reader_->getNumberOfRows() == 0) {
         return 1;
     }
-    std::unordered_set<uint64_t> target_columns(column_ids.begin(), column_ids.end());
     uint64_t max_column_id = std::numeric_limits<uint64_t>::max();
     uint64_t max_length = 0;
     for (const auto& column_id : column_ids) {
