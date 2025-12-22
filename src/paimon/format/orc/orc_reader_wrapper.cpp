@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "fmt/format.h"
 #include "orc/OrcFile.hh"
 #include "paimon/common/utils/arrow/status_utils.h"
 #include "paimon/common/utils/scope_guard.h"

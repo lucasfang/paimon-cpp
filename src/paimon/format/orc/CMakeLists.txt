@@ -58,6 +58,8 @@ if(PAIMON_ENABLE_ORC)
                         orc_stats_extractor_test.cpp
                         orc_format_writer_test.cpp
                         orc_file_batch_reader_test.cpp
+                        orc_reader_wrapper_test.cpp
+                        read_range_generator_test.cpp
                         EXTRA_INCLUDES
                         ${ORC_INCLUDE_DIR}
                         STATIC_LINK_LIBS
