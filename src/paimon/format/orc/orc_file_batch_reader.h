@@ -31,7 +31,7 @@
 #include "paimon/format/orc/orc_reader_wrapper.h"
 #include "paimon/memory/memory_pool.h"
 #include "paimon/predicate/predicate.h"
-#include "paimon/reader/file_batch_reader.h"
+#include "paimon/reader/prefetch_file_batch_reader.h"
 
 namespace orc {
 class InputStream;
@@ -39,7 +39,7 @@ class InputStream;
 
 namespace paimon::orc {
 
-class OrcFileBatchReader : public FileBatchReader {
+class OrcFileBatchReader : public PrefetchFileBatchReader {
  public:
     static Result<std::unique_ptr<OrcFileBatchReader>> Create(
         std::unique_ptr<::orc::InputStream>&& input_stream, const std::shared_ptr<MemoryPool>& pool,
