@@ -117,7 +117,6 @@ class OrcFileBatchReader : public PrefetchFileBatchReader {
     std::unique_ptr<::orc::ReaderMetrics> reader_metrics_;
     std::unique_ptr<OrcReaderWrapper> reader_;
     std::shared_ptr<Metrics> metrics_;
-    bool has_error_ = false;
     std::vector<uint64_t> target_column_ids_;
 };
 
