@@ -71,24 +71,6 @@
 namespace paimon::test {
 class GmockFileSystem : public LocalFileSystem {
  public:
-    GmockFileSystem() {
-        ON_CALL(*this, ListDir(testing::_, testing::_))
-            .WillByDefault(testing::Invoke(
-                [&](const std::string& directory,
-                    std::vector<std::unique_ptr<BasicFileStatus>>* file_status_list) {
-                    return this->LocalFileSystem::ListDir(directory, file_status_list);
-                }));
-        ON_CALL(*this, ReadFile(testing::_, testing::_))
-            .WillByDefault(testing::Invoke([&](const std::string& path, std::string* content) {
-                return this->FileSystem::ReadFile(path, content);
-            }));
-        ON_CALL(*this, AtomicStore(::testing::_, ::testing::_))
-            .WillByDefault(
-                testing::Invoke([&](const std::string& path, const std::string& content) {
-                    return this->FileSystem::AtomicStore(path, content);
-                }));
-    }
-
     MOCK_METHOD(Status, ReadFile, (const std::string& path, std::string* content), (override));
     MOCK_METHOD(Status, ListDir,
                 (const std::string& directory,
@@ -113,6 +95,22 @@ class GmockFileSystemFactory : public LocalFileSystemFactory {
 class FileStoreCommitImplTest : public testing::Test {
  public:
     void SetUp() override {
+        ON_CALL(*this, ListDir(testing::_, testing::_))
+            .WillByDefault(testing::Invoke(
+                [&](const std::string& directory,
+                    std::vector<std::unique_ptr<BasicFileStatus>>* file_status_list) {
+                    return this->LocalFileSystem::ListDir(directory, file_status_list);
+                }));
+        ON_CALL(*this, ReadFile(testing::_, testing::_))
+            .WillByDefault(testing::Invoke([&](const std::string& path, std::string* content) {
+                return this->FileSystem::ReadFile(path, content);
+            }));
+        ON_CALL(*this, AtomicStore(::testing::_, ::testing::_))
+            .WillByDefault(
+                testing::Invoke([&](const std::string& path, const std::string& content) {
+                    return this->FileSystem::AtomicStore(path, content);
+                }));
+
         auto factory_creator = paimon::FactoryCreator::GetInstance();
         factory_creator->Register("gmock_fs", (new GmockFileSystemFactory));
         dir_ = UniqueTestDirectory::Create();
