@@ -319,7 +319,6 @@ if(PAIMON_BUILD_TESTS)
                       -L
                       unittest
                       --output-on-failure)
-    add_compile_options(-fno-access-control)
     add_dependencies(unittest paimon-tests)
 
     include_directories(SYSTEM ${GTEST_INCLUDE_DIR})
