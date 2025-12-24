@@ -29,6 +29,7 @@
 
 namespace paimon {
 class ByteArrayInputStream;
+class RoaringBitmap64;
 
 /// A compressed bitmap for 32-bit integer.
 class PAIMON_EXPORT RoaringBitmap32 {
@@ -159,6 +160,8 @@ class PAIMON_EXPORT RoaringBitmap32 {
 
     /// Fast union multiple bitmaps.
     static RoaringBitmap32 FastUnion(const std::vector<RoaringBitmap32>& inputs);
+
+    friend class RoaringBitmap64;
 
  private:
     void* roaring_bitmap_ = nullptr;

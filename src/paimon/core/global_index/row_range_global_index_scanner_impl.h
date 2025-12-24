@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paimon/core/core_options.h"
+#include "paimon/core/global_index/global_index_evaluator.h"
 #include "paimon/core/global_index/global_index_file_manager.h"
 #include "paimon/core/manifest/index_manifest_entry.h"
 #include "paimon/core/schema/table_schema.h"
@@ -41,14 +42,19 @@ class RowRangeGlobalIndexScannerImpl
                                    const CoreOptions& options,
                                    const std::shared_ptr<MemoryPool>& pool);
 
-    Result<std::shared_ptr<GlobalIndexEvaluator>> CreateIndexEvaluator() const override;
+    Result<std::shared_ptr<GlobalIndexEvaluator>> CreateIndexEvaluator() const;
 
     /// @return nullptr if global index reader not exist or plugin mismatch
     Result<std::shared_ptr<GlobalIndexReader>> CreateReader(
         const std::string& field_name, const std::string& index_type) const override;
 
+    Result<std::vector<std::shared_ptr<GlobalIndexReader>>> CreateReaders(
+        const std::string& field_name) const override;
+
  private:
     Result<std::vector<std::shared_ptr<GlobalIndexReader>>> CreateReaders(int32_t field_id) const;
+    Result<std::vector<std::shared_ptr<GlobalIndexReader>>> CreateReaders(
+        const DataField& field) const;
 
     Result<std::shared_ptr<GlobalIndexReader>> CreateReader(
         const DataField& field, const std::string& index_type,

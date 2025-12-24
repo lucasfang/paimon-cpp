@@ -71,24 +71,6 @@
 namespace paimon::test {
 class GmockFileSystem : public LocalFileSystem {
  public:
-    GmockFileSystem() {
-        ON_CALL(*this, ListDir(testing::_, testing::_))
-            .WillByDefault(testing::Invoke(
-                [&](const std::string& directory,
-                    std::vector<std::unique_ptr<BasicFileStatus>>* file_status_list) {
-                    return this->LocalFileSystem::ListDir(directory, file_status_list);
-                }));
-        ON_CALL(*this, ReadFile(testing::_, testing::_))
-            .WillByDefault(testing::Invoke([&](const std::string& path, std::string* content) {
-                return this->FileSystem::ReadFile(path, content);
-            }));
-        ON_CALL(*this, AtomicStore(::testing::_, ::testing::_))
-            .WillByDefault(
-                testing::Invoke([&](const std::string& path, const std::string& content) {
-                    return this->FileSystem::AtomicStore(path, content);
-                }));
-    }
-
     MOCK_METHOD(Status, ReadFile, (const std::string& path, std::string* content), (override));
     MOCK_METHOD(Status, ListDir,
                 (const std::string& directory,
@@ -106,7 +88,29 @@ class GmockFileSystemFactory : public LocalFileSystemFactory {
 
     Result<std::unique_ptr<FileSystem>> Create(
         const std::string& path, const std::map<std::string, std::string>& options) const override {
-        return std::make_unique<GmockFileSystem>();
+        auto fs = std::make_unique<GmockFileSystem>();
+        using ::testing::A;
+        using ::testing::Invoke;
+
+        ON_CALL(*fs, ListDir(A<const std::string&>(),
+                             A<std::vector<std::unique_ptr<BasicFileStatus>>*>()))
+            .WillByDefault(
+                Invoke([&](const std::string& directory,
+                           std::vector<std::unique_ptr<BasicFileStatus>>* file_status_list) {
+                    return fs->LocalFileSystem::ListDir(directory, file_status_list);
+                }));
+
+        ON_CALL(*fs, ReadFile(A<const std::string&>(), A<std::string*>()))
+            .WillByDefault(Invoke([&](const std::string& path, std::string* content) {
+                return fs->FileSystem::ReadFile(path, content);
+            }));
+
+        ON_CALL(*fs, AtomicStore(A<const std::string&>(), A<const std::string&>()))
+            .WillByDefault(Invoke([&](const std::string& path, const std::string& content) {
+                return fs->FileSystem::AtomicStore(path, content);
+            }));
+
+        return fs;
     }
 };
 

@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "paimon/global_index/global_index_evaluator.h"
 #include "paimon/global_index/global_index_reader.h"
 #include "paimon/visibility.h"
 
@@ -28,15 +27,6 @@ namespace paimon {
 class PAIMON_EXPORT RowRangeGlobalIndexScanner {
  public:
     virtual ~RowRangeGlobalIndexScanner() = default;
-
-    /// Creates a `GlobalIndexEvaluator` tailored to this range's index layout.
-    ///
-    /// The returned evaluator can be used to assess whether a given predicate can be
-    /// answered using the global index data of this shard (e.g., via bitmap intersection).
-    ///
-    /// @return A `Result` containing a shared pointer to the evaluator, or an error
-    ///         if the index metadata is invalid or unsupported.
-    virtual Result<std::shared_ptr<GlobalIndexEvaluator>> CreateIndexEvaluator() const = 0;
 
     /// Creates a `GlobalIndexReader` for a specific field and index type within this range.
     ///
@@ -50,8 +40,22 @@ class PAIMON_EXPORT RowRangeGlobalIndexScanner {
     ///         - Successful with a null pointer if no index was built for the given field and type;
     ///         - An error only if loading fails (e.g., file corruption, I/O error, unsupported
     ///         format).
+    /// @note All `GlobalIndexResult` objects returned by `GlobalIndexReader` use **local row
+    /// ids** that start from 0 — not global row ids in the entire table.
     virtual Result<std::shared_ptr<GlobalIndexReader>> CreateReader(
         const std::string& field_name, const std::string& index_type) const = 0;
+
+    /// Creates several `GlobalIndexReader`s for a specific field within this range.
+    ///
+    /// @param field_name  Name of the indexed column.
+    /// @return A `Result` that is:
+    ///         - Successful with several readers if the indexes exist and load correctly;
+    ///         - Successful with an empty vector if no index was built for the given field;
+    ///         - Error returns when loading fails (e.g., file corruption, I/O error, unsupported
+    ///         format) or the predicate method was incorrectly invoked (e.g., VisitTopK was invoked
+    ///         incorrectly).
+    virtual Result<std::vector<std::shared_ptr<GlobalIndexReader>>> CreateReaders(
+        const std::string& field_name) const = 0;
 };
 
 }  // namespace paimon
