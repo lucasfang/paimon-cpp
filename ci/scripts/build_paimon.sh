@@ -19,6 +19,7 @@ set -eux
 source_dir=${1}
 enable_sanitizer=${2:-false}
 check_clang_tidy=${3:-false}
+build_type=${4:-Debug}
 build_dir=${1}/build
 
 mkdir ${build_dir}
@@ -26,7 +27,7 @@ pushd ${build_dir}
 
 CMAKE_ARGS=(
     "-G Ninja"
-    "-DCMAKE_BUILD_TYPE=Debug"
+    "-DCMAKE_BUILD_TYPE=${build_type}"
     "-DPAIMON_BUILD_TESTS=ON"
     "-DPAIMON_ENABLE_LANCE=ON"
     "-DPAIMON_ENABLE_JINDO=ON"

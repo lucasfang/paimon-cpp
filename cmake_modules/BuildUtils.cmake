@@ -256,6 +256,7 @@ function(add_test_case REL_TEST_NAME)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(${TEST_NAME} PRIVATE -Wno-global-constructors)
     endif()
+    target_compile_options(${TEST_NAME} PRIVATE -fno-access-control)
 
     add_test(${TEST_NAME}
              ${BUILD_SUPPORT_DIR}/run-test.sh

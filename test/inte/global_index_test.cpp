@@ -1683,7 +1683,8 @@ TEST_P(GlobalIndexTest, TestScanIndexWithTwoIndexes) {
 }
 
 std::vector<std::string> GetTestValuesForGlobalIndexTest() {
-    std::vector<std::string> values = {"parquet"};
+    std::vector<std::string> values;
+    values.emplace_back("parquet");
 #ifdef PAIMON_ENABLE_ORC
     values.emplace_back("orc");
 #endif
