@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structpaimon_1_1_catalog_options" kind="struct" language="C++" prot="public">
+    <compoundname>paimon::CatalogOptions</compoundname>
+    <includes refid="catalog__options_8h" local="no">/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h</includes>
+    <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structpaimon_1_1_catalog_options_1a2c48c106d87c6d1262c1d3e3cd6827b6" prot="public" static="yes" mutable="no">
+        <type><ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">const</ref> <ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">char</ref></type>
+        <definition>const char paimon::CatalogOptions::METASTORE[]</definition>
+        <argsstring>[]</argsstring>
+        <name>METASTORE</name>
+        <qualifiedname>paimon::CatalogOptions::METASTORE</qualifiedname>
+        <briefdescription>
+<para>&quot;metastore&quot; - Metastore of the paimon catalog. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Supported values are &quot;filesystem&quot; (default) and &quot;rest&quot;. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="27" column="23" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structpaimon_1_1_catalog_options_1ab408141f0bf2397a961da7f5206ba4b1" prot="public" static="yes" mutable="no">
+        <type><ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">const</ref> <ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">char</ref></type>
+        <definition>const char paimon::CatalogOptions::URI[]</definition>
+        <argsstring>[]</argsstring>
+        <name>URI</name>
+        <qualifiedname>paimon::CatalogOptions::URI</qualifiedname>
+        <briefdescription>
+<para>&quot;uri&quot; - Server url of the REST catalog. Only used when METASTORE is &quot;rest&quot;. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="30" column="23" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="30" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structpaimon_1_1_catalog_options_1a0f2d1fd220066a089ae858990d1b139d" prot="public" static="yes" mutable="no">
+        <type><ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">const</ref> <ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">char</ref></type>
+        <definition>const char paimon::CatalogOptions::TOKEN[]</definition>
+        <argsstring>[]</argsstring>
+        <name>TOKEN</name>
+        <qualifiedname>paimon::CatalogOptions::TOKEN</qualifiedname>
+        <briefdescription>
+<para>&quot;token&quot; - Token of the &quot;bear&quot; token provider of the REST catalog. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="33" column="23" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structpaimon_1_1_catalog_options_1ab43262fdf9f4e1ab7d169f65a600f801" prot="public" static="yes" mutable="no">
+        <type><ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">const</ref> <ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">char</ref></type>
+        <definition>const char paimon::CatalogOptions::TOKEN_PROVIDER[]</definition>
+        <argsstring>[]</argsstring>
+        <name>TOKEN_PROVIDER</name>
+        <qualifiedname>paimon::CatalogOptions::TOKEN_PROVIDER</qualifiedname>
+        <briefdescription>
+<para>&quot;token.provider&quot; - Authentication provider of the REST catalog. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Only &quot;bear&quot; is supported (&quot;bear&quot; is the protocol&apos;s historical spelling of &quot;bearer&quot;, do not &quot;fix&quot; it). </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="37" column="23" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structpaimon_1_1_catalog_options_1ade3f44eef8913c83523c5156cbf3eee6" prot="public" static="yes" mutable="no">
+        <type><ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">const</ref> <ref refid="memory__pool_8h_1a147ba4ba34a215b3a4f3a95c1ee11704" kindref="member">char</ref></type>
+        <definition>const char paimon::CatalogOptions::TABLE_DEFAULT_OPTION_PREFIX[]</definition>
+        <argsstring>[]</argsstring>
+        <name>TABLE_DEFAULT_OPTION_PREFIX</name>
+        <qualifiedname>paimon::CatalogOptions::TABLE_DEFAULT_OPTION_PREFIX</qualifiedname>
+        <briefdescription>
+<para>&quot;table-default.&quot; - Prefix of the catalog options that provide table option defaults: &quot;table-default.&lt;key&gt;=&lt;value&gt;&quot; applies &quot;&lt;key&gt;=&lt;value&gt;&quot; to a created table when the caller left &quot;&lt;key&gt;&quot; unset. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="42" column="23" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="42" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Catalog-level configuration option keys; table-level keys live in <computeroutput><ref refid="structpaimon_1_1_options" kindref="compound">Options</ref></computeroutput>. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" line="24" column="1" bodyfile="/home/runner/work/paimon-cpp/paimon-cpp/include/paimon/catalog_options.h" bodystart="24" bodyend="43"/>
+    <listofallmembers>
+      <member refid="structpaimon_1_1_catalog_options_1a2c48c106d87c6d1262c1d3e3cd6827b6" prot="public" virt="non-virtual"><scope>paimon::CatalogOptions</scope><name>METASTORE</name></member>
+      <member refid="structpaimon_1_1_catalog_options_1ade3f44eef8913c83523c5156cbf3eee6" prot="public" virt="non-virtual"><scope>paimon::CatalogOptions</scope><name>TABLE_DEFAULT_OPTION_PREFIX</name></member>
+      <member refid="structpaimon_1_1_catalog_options_1a0f2d1fd220066a089ae858990d1b139d" prot="public" virt="non-virtual"><scope>paimon::CatalogOptions</scope><name>TOKEN</name></member>
+      <member refid="structpaimon_1_1_catalog_options_1ab43262fdf9f4e1ab7d169f65a600f801" prot="public" virt="non-virtual"><scope>paimon::CatalogOptions</scope><name>TOKEN_PROVIDER</name></member>
+      <member refid="structpaimon_1_1_catalog_options_1ab408141f0bf2397a961da7f5206ba4b1" prot="public" virt="non-virtual"><scope>paimon::CatalogOptions</scope><name>URI</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
