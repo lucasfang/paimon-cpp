@@ -43,7 +43,7 @@ ReadContext::ReadContext(
     const std::map<std::string, std::string>& fs_scheme_to_identifier_map,
     const std::shared_ptr<RealtimeContext>& realtime_context,
     const std::map<std::string, std::string>& options, bool read_ahead_cache_enabled,
-    const CacheConfig& cache_config, const std::shared_ptr<Cache>& cache)
+    const CacheConfig& cache_config, const std::shared_ptr<Cache>& cache, WarmupMode warmup_mode)
     : path_(path),
       branch_(branch),
       read_field_names_(read_field_names),
@@ -65,7 +65,8 @@ ReadContext::ReadContext(
       options_(options),
       read_ahead_cache_enabled_(read_ahead_cache_enabled),
       cache_config_(cache_config),
-      cache_(cache) {}
+      cache_(cache),
+      warmup_mode_(warmup_mode) {}
 
 ReadContext::~ReadContext() {
     if (read_schema_ && read_schema_->release) {
@@ -111,6 +112,7 @@ class ReadContextBuilder::Impl {
         realtime_context_.reset();
         cache_config_ = CacheConfig();
         cache_.reset();
+        warmup_mode_ = WarmupMode::FULL;
     }
 
  private:
@@ -137,6 +139,7 @@ class ReadContextBuilder::Impl {
     bool read_ahead_cache_enabled_ = true;
     CacheConfig cache_config_;
     std::shared_ptr<Cache> cache_;
+    WarmupMode warmup_mode_ = WarmupMode::FULL;
 };
 
 ReadContextBuilder::ReadContextBuilder(const std::string& path)
@@ -263,6 +266,11 @@ ReadContextBuilder& ReadContextBuilder::SetReadAheadCacheEnabled(bool enabled) {
     return *this;
 }
 
+ReadContextBuilder& ReadContextBuilder::SetWarmupMode(WarmupMode mode) {
+    impl_->warmup_mode_ = mode;
+    return *this;
+}
+
 ReadContextBuilder& ReadContextBuilder::WithCacheConfig(const CacheConfig& cache_config) {
     impl_->cache_config_ = cache_config;
     return *this;
@@ -312,7 +320,7 @@ Result<std::unique_ptr<ReadContext>> ReadContextBuilder::Finish() {
         impl_->row_to_batch_thread_number_, impl_->table_schema_, impl_->memory_pool_,
         impl_->executor_, impl_->specific_file_system_, impl_->fs_scheme_to_identifier_map_,
         impl_->realtime_context_, impl_->options_, impl_->read_ahead_cache_enabled_,
-        impl_->cache_config_, impl_->cache_);
+        impl_->cache_config_, impl_->cache_, impl_->warmup_mode_);
     if (impl_->read_schema_ && impl_->read_schema_->release) {
         ctx->SetReadSchema(std::move(impl_->read_schema_));
     }
