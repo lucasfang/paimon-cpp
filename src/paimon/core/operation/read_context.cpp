@@ -112,7 +112,7 @@ class ReadContextBuilder::Impl {
         realtime_context_.reset();
         cache_config_ = CacheConfig();
         cache_.reset();
-        warmup_mode_ = WarmupMode::FULL;
+        warmup_mode_ = WarmupMode::CACHE_ONLY;
     }
 
  private:
