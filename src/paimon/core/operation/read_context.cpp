@@ -139,7 +139,7 @@ class ReadContextBuilder::Impl {
     bool read_ahead_cache_enabled_ = true;
     CacheConfig cache_config_;
     std::shared_ptr<Cache> cache_;
-    WarmupMode warmup_mode_ = WarmupMode::FULL;
+    WarmupMode warmup_mode_ = WarmupMode::CACHE_ONLY;
 };
 
 ReadContextBuilder::ReadContextBuilder(const std::string& path)

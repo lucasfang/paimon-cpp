@@ -70,7 +70,7 @@ class PrefetchFileBatchReaderImpl : public PrefetchFileBatchReader {
         bool initialize_read_ranges, bool read_ahead_cache_enabled, const CacheConfig& cache_config,
         bool enable_io_metrics, const std::shared_ptr<MemoryPool>& pool,
         const std::shared_ptr<arrow::MemoryPool>& arrow_pool,
-        WarmupMode warmup_mode = WarmupMode::FULL);
+        WarmupMode warmup_mode = WarmupMode::CACHE_ONLY);
 
     ~PrefetchFileBatchReaderImpl() override;
 
