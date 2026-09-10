@@ -234,34 +234,29 @@ Result<std::unique_ptr<PrefetchFileBatchReaderImpl>> PrefetchFileBatchReaderImpl
         io_metrics = std::make_shared<PrefetchIoMetricsState>();
     }
     std::shared_ptr<ReadAheadCache> cache;
+    // One stream is opened for the whole file and shared by every sub-reader, so a sub-reader miss
+    // and a cache fetch hit the same handle instead of one handle per reader. The formats read
+    // their data positionally, so the shared stream carries no per-reader position.
+    PAIMON_ASSIGN_OR_RAISE(std::shared_ptr<InputStream> input_stream,
+                           fs->Open(FileStatus(data_file_path, data_file_size)));
+    if (io_metrics) {
+        input_stream = std::make_shared<MetricsInputStream>(input_stream, io_metrics);
+    }
     if (read_ahead_cache_enabled) {
-        PAIMON_ASSIGN_OR_RAISE(std::shared_ptr<InputStream> input_stream,
-                               fs->Open(FileStatus(data_file_path, data_file_size)));
-        if (io_metrics) {
-            input_stream = std::make_shared<MetricsInputStream>(input_stream, io_metrics);
-        }
         // The file size lets the cache align its blocks to the end of the file,
         // where the metadata the readers read before any range is registered
         // lives. A zero size means unknown and disables the block cache.
         cache = std::make_shared<ReadAheadCache>(input_stream, cache_config,
                                                  static_cast<uint64_t>(data_file_size), pool);
     }
+    auto cache_input_stream = std::make_shared<CacheInputStream>(input_stream, cache);
     std::vector<std::future<Result<std::unique_ptr<FileBatchReader>>>> futures;
     for (uint32_t i = 0; i < prefetch_max_parallel_num; i++) {
-        futures.push_back(Via(
-            executor.get(),
-            [&fs, &data_file_path, data_file_size, &reader_builder, &cache,
-             io_metrics]() -> Result<std::unique_ptr<FileBatchReader>> {
-                PAIMON_ASSIGN_OR_RAISE(std::unique_ptr<InputStream> input_stream,
-                                       fs->Open(FileStatus(data_file_path, data_file_size)));
-                if (io_metrics) {
-                    input_stream =
-                        std::make_unique<MetricsInputStream>(std::move(input_stream), io_metrics);
-                }
-                auto cache_input_stream =
-                    std::make_shared<CacheInputStream>(std::move(input_stream), cache);
-                return reader_builder->Build(cache_input_stream);
-            }));
+        futures.push_back(Via(executor.get(),
+                              [&reader_builder, &cache_input_stream]()
+                                  -> Result<std::unique_ptr<FileBatchReader>> {
+                                  return reader_builder->Build(cache_input_stream);
+                              }));
     }
     std::vector<std::shared_ptr<PrefetchFileBatchReader>> readers;
     for (auto& file_batch_reader : CollectAll(futures)) {

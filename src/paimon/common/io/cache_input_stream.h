@@ -27,11 +27,18 @@
 
 namespace paimon {
 
+/// Serves the positional reads it can out of the given read-ahead cache and forwards the rest to
+/// the underlying stream.
+///
+/// The underlying stream is held through a shared pointer so that several readers of the same file
+/// can share one open stream. Sharing is only safe for readers that read positionally: the
+/// stateful `Seek()`/`GetPos()`/`Read(buffer, size)` methods are forwarded as they are and remain
+/// subject to the thread safety of the underlying stream.
 class CacheInputStream : public InputStream {
  public:
-    CacheInputStream(std::unique_ptr<InputStream> input_stream,
+    CacheInputStream(const std::shared_ptr<InputStream>& input_stream,
                      const std::shared_ptr<ReadAheadCache>& cache)
-        : cache_(cache), input_stream_(std::move(input_stream)) {}
+        : cache_(cache), input_stream_(input_stream) {}
 
     Status Seek(int64_t offset, SeekOrigin origin) override {
         return input_stream_->Seek(offset, origin);
@@ -95,7 +102,7 @@ class CacheInputStream : public InputStream {
 
  private:
     std::shared_ptr<ReadAheadCache> cache_;
-    std::unique_ptr<InputStream> input_stream_;
+    std::shared_ptr<InputStream> input_stream_;
 };
 
 }  // namespace paimon
