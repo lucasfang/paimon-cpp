@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "paimon/fs/file_system.h"
@@ -134,6 +135,21 @@ class PAIMON_EXPORT ReadAheadCache {
     /// on the cache configuration.
     Status Init(std::vector<ByteRange>&& ranges);
 
+    /// Register more byte ranges into an already initialized cache, for the ranges that only
+    /// become known while reading: the late-materialization payload pass learns which pages it
+    /// needs only after the probe pass has evaluated the predicate.
+    ///
+    /// Unlike Init(), this may be called repeatedly and concurrently with Read(). A new range
+    /// that intersects an already registered one is dropped rather than merged: Read() finds its
+    /// covering entries by walking a disjoint, offset-ordered list, and an intersecting range is
+    /// normally one the coalescing of the earlier round already covers.
+    ///
+    /// A cache that was never initialized, or whose buffers were released, has no registration
+    /// round to extend and reports no new range.
+    /// @param ranges The byte ranges to register on top of the ranges already registered.
+    /// @return The offset of the first newly registered range, or nullopt when nothing was added.
+    Result<std::optional<uint64_t>> AddRanges(std::vector<ByteRange>&& ranges);
+
     /// Read a range previously provided to Init(), copying the cached data
     /// directly into the given destination buffer.
     ///
@@ -152,6 +168,11 @@ class PAIMON_EXPORT ReadAheadCache {
     /// Init() only registers the ranges; without Warmup() the first fetch starts
     /// when the first Read() arrives, racing the caller's own miss fetch.
     void Warmup();
+
+    /// Start fetching the registered ranges from `from_offset` forward, bounded by the
+    /// pre-buffer limit. Warmup() is this call made from the first registered range.
+    /// @param from_offset The offset to start fetching from, typically one AddRanges() returned.
+    void Warmup(uint64_t from_offset);
 
     /// Collect the counters of the Read() calls, of the block cache and of the
     /// IOs into the given metrics as counters named after

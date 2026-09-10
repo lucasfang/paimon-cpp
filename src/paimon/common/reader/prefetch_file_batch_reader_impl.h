@@ -141,6 +141,16 @@ class PrefetchFileBatchReaderImpl : public PrefetchFileBatchReader {
     /// SetReadStatus() rather than returned: a warmup hint for a file that may never be read must
     /// not fail an in-flight read.
     void WarmCacheOnce();
+
+    /// Registers byte ranges a sub-reader discovered mid-read (the late-materialization payload
+    /// pass) with the shared cache and starts fetching them from there. A no-op without a cache
+    /// or on a cache whose registration round has ended. Errors are recorded via SetReadStatus()
+    /// for the same reason as in WarmCacheOnce().
+    void RegisterLatePreBufferRanges(std::vector<std::pair<uint64_t, uint64_t>>&& read_ranges);
+
+    /// Detaches the sinks installed on the sub-readers, so that a sub-reader outliving this reader
+    /// cannot call back into it. Called once the background thread has been joined.
+    void ClearPreBufferSinks();
     void SetReadStatus(const Status& status);
     Status GetReadStatus() const;
     Result<bool> IsEofRange(const std::pair<uint64_t, uint64_t>& read_range) const;
