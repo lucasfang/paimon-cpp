@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -67,8 +69,19 @@ class RowToArrowArrayConverter {
     template <typename BuilderType>
     static Result<BuilderType*> CastToTypedBuilder(arrow::ArrayBuilder* array_builder);
 
+    // Inflate only mildly: both directions cost a copy. Under-reserving makes arrow grow the
+    // buffer by doubling and memmove everything appended so far, while over-reserving by 2x or
+    // more makes the shrink in Finish() memcpy the whole buffer, because MemoryPoolImpl::Realloc
+    // keeps the block in place only when shrinking to more than half of the old size.
     static inline const double INFLATION_FACTOR = 1.2;
+
+    // Estimated data buffer size of a variable-width column, derived from the accumulated
+    // per-row byte size and the estimated row count. Clamped to arrow's binary offset limit,
+    // since an inflated estimate must not turn a merely large batch into a CapacityError.
+    static int64_t EstimateDataSize(int32_t bytes_per_row, int32_t num_rows);
+
     void UpdateAccumulatedVec(int32_t value, int32_t* idx);
+    void UpdateAccumulatedBytesPerRow(int64_t total_bytes, int64_t num_rows, int32_t* idx);
 
  protected:
     std::vector<int32_t> reserved_sizes_;
@@ -120,8 +133,10 @@ Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builde
         // first batch, reserved_sizes_ is not initialized
         return Status::OK();
     }
-    PAIMON_RETURN_NOT_OK_FROM_ARROW(
-        array_builder->Reserve(INFLATION_FACTOR * reserved_sizes_[(*idx)++]));
+    // The first slot of every column is its accumulated row count; it also scales the
+    // per-row data size estimate of variable-width columns below.
+    const int32_t num_rows = reserved_sizes_[(*idx)++];
+    PAIMON_RETURN_NOT_OK_FROM_ARROW(array_builder->Reserve(INFLATION_FACTOR * num_rows));
     arrow::Type::type type = array_builder->type()->id();
     switch (type) {
         case arrow::Type::type::BOOL:
@@ -140,7 +155,7 @@ Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builde
             PAIMON_ASSIGN_OR_RAISE(auto* string_builder,
                                    CastToTypedBuilder<arrow::StringBuilder>(array_builder));
             PAIMON_RETURN_NOT_OK_FROM_ARROW(
-                string_builder->ReserveData(INFLATION_FACTOR * reserved_sizes_[(*idx)++]));
+                string_builder->ReserveData(EstimateDataSize(reserved_sizes_[(*idx)++], num_rows)));
             break;
         }
         case arrow::Type::type::BINARY: {
@@ -148,7 +163,7 @@ Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builde
             PAIMON_ASSIGN_OR_RAISE(auto* binary_builder,
                                    CastToTypedBuilder<arrow::BinaryBuilder>(array_builder));
             PAIMON_RETURN_NOT_OK_FROM_ARROW(
-                binary_builder->ReserveData(INFLATION_FACTOR * reserved_sizes_[(*idx)++]));
+                binary_builder->ReserveData(EstimateDataSize(reserved_sizes_[(*idx)++], num_rows)));
             break;
         }
         case arrow::Type::type::LIST: {
@@ -198,6 +213,26 @@ void RowToArrowArrayConverter<T, R>::UpdateAccumulatedVec(int32_t value, int32_t
 }
 
 template <typename T, typename R>
+void RowToArrowArrayConverter<T, R>::UpdateAccumulatedBytesPerRow(int64_t total_bytes,
+                                                                  int64_t num_rows, int32_t* idx) {
+    if (num_rows <= 0) {
+        // Nothing observed in this batch, keep the previous estimate.
+        (*idx)++;
+        return;
+    }
+    // Round up, so that truncation never shrinks the per-row estimate.
+    const int64_t bytes_per_row = (total_bytes + num_rows - 1) / num_rows;
+    UpdateAccumulatedVec(static_cast<int32_t>(bytes_per_row), idx);
+}
+
+template <typename T, typename R>
+int64_t RowToArrowArrayConverter<T, R>::EstimateDataSize(int32_t bytes_per_row, int32_t num_rows) {
+    constexpr auto MEMORY_LIMIT = static_cast<double>(std::numeric_limits<int32_t>::max() - 1);
+    const double estimated = INFLATION_FACTOR * bytes_per_row * num_rows;
+    return static_cast<int64_t>(std::min(estimated, MEMORY_LIMIT));
+}
+
+template <typename T, typename R>
 Status RowToArrowArrayConverter<T, R>::Accumulate(const arrow::Array* array, int32_t* idx) {
     UpdateAccumulatedVec(array->length(), idx);
     arrow::Type::type type = array->type()->id();
@@ -215,14 +250,15 @@ Status RowToArrowArrayConverter<T, R>::Accumulate(const arrow::Array* array, int
             break;
         case arrow::Type::type::STRING: {
             auto string_array = checked_cast<const arrow::StringArray*>(array);
-            // accumulate the bytes buffer size of binary
-            UpdateAccumulatedVec(string_array->value_data()->size(), idx);
+            // accumulate the bytes buffer size of string per row, so that the estimate stays
+            // valid when the next batch holds a different number of rows
+            UpdateAccumulatedBytesPerRow(string_array->value_data()->size(), array->length(), idx);
             break;
         }
         case arrow::Type::type::BINARY: {
             auto binary_array = checked_cast<const arrow::BinaryArray*>(array);
-            // accumulate the bytes buffer size of binary
-            UpdateAccumulatedVec(binary_array->value_data()->size(), idx);
+            // accumulate the bytes buffer size of binary per row
+            UpdateAccumulatedBytesPerRow(binary_array->value_data()->size(), array->length(), idx);
             break;
         }
         case arrow::Type::type::LIST: {
