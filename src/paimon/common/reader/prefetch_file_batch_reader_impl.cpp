@@ -252,11 +252,11 @@ Result<std::unique_ptr<PrefetchFileBatchReaderImpl>> PrefetchFileBatchReaderImpl
     auto cache_input_stream = std::make_shared<CacheInputStream>(input_stream, cache);
     std::vector<std::future<Result<std::unique_ptr<FileBatchReader>>>> futures;
     for (uint32_t i = 0; i < prefetch_max_parallel_num; i++) {
-        futures.push_back(Via(executor.get(),
-                              [&reader_builder, &cache_input_stream]()
-                                  -> Result<std::unique_ptr<FileBatchReader>> {
-                                  return reader_builder->Build(cache_input_stream);
-                              }));
+        futures.push_back(Via(
+            executor.get(),
+            [&reader_builder, &cache_input_stream]() -> Result<std::unique_ptr<FileBatchReader>> {
+                return reader_builder->Build(cache_input_stream);
+            }));
     }
     std::vector<std::shared_ptr<PrefetchFileBatchReader>> readers;
     for (auto& file_batch_reader : CollectAll(futures)) {
