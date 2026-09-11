@@ -49,7 +49,7 @@ Result<std::unique_ptr<MetaToArrowArrayConverter>> MetaToArrowArrayConverter::Cr
 
 Result<std::shared_ptr<arrow::Array>> MetaToArrowArrayConverter::NextBatch(
     const std::vector<BinaryRow>& meta_rows) {
-    PAIMON_RETURN_NOT_OK(ResetAndReserve());
+    PAIMON_RETURN_NOT_OK(ResetAndReserve(static_cast<int32_t>(meta_rows.size())));
     PAIMON_RETURN_NOT_OK_FROM_ARROW(
         array_builder_->AppendValues(meta_rows.size(), /*valid_bytes=*/nullptr));
     for (size_t i = 0; i < appenders_.size(); i++) {

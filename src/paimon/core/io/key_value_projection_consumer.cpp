@@ -67,7 +67,7 @@ Result<std::unique_ptr<KeyValueProjectionConsumer>> KeyValueProjectionConsumer::
 
 Result<BatchReader::ReadBatch> KeyValueProjectionConsumer::NextBatch(
     const std::vector<KeyValue>& key_value_vec) {
-    PAIMON_RETURN_NOT_OK(ResetAndReserve());
+    PAIMON_RETURN_NOT_OK(ResetAndReserve(static_cast<int32_t>(key_value_vec.size())));
     PAIMON_RETURN_NOT_OK_FROM_ARROW(
         array_builder_->AppendValues(key_value_vec.size(), /*valid_bytes=*/nullptr));
     for (int32_t i = 0; i < static_cast<int32_t>(target_to_src_mapping_.size()); i++) {

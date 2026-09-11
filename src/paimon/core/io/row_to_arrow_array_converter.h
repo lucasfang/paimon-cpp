@@ -60,10 +60,14 @@ class RowToArrowArrayConverter {
                                                int32_t* reserve_count);
 
  protected:
-    Status ResetAndReserve();
+    // num_rows is the exact number of rows in the current batch, used to reserve builder
+    // capacity precisely instead of relying on the cross-batch estimate.
+    Status ResetAndReserve(int32_t num_rows);
     Result<BatchReader::ReadBatch> FinishAndAccumulate();
     Status Accumulate(const arrow::Array* array, int32_t* idx);
-    Status Reserve(arrow::ArrayBuilder* array_builder, int32_t* idx);
+    // num_rows is the exact element count to append at this level when known (>= 0), or -1 when
+    // unknown (inside a variable-width container), in which case the accumulated estimate is used.
+    Status Reserve(arrow::ArrayBuilder* array_builder, int32_t* idx, int32_t num_rows);
 
  private:
     template <typename BuilderType>
@@ -106,10 +110,10 @@ RowToArrowArrayConverter<T, R>::RowToArrowArrayConverter(
       array_builder_(std::move(array_builder)) {}
 
 template <typename T, typename R>
-Status RowToArrowArrayConverter<T, R>::ResetAndReserve() {
+Status RowToArrowArrayConverter<T, R>::ResetAndReserve(int32_t num_rows) {
     array_builder_->Reset();
     int32_t reserve_idx = 0;
-    return Reserve(array_builder_.get(), &reserve_idx);
+    return Reserve(array_builder_.get(), &reserve_idx, num_rows);
 }
 
 template <typename T, typename R>
@@ -128,15 +132,22 @@ Result<BatchReader::ReadBatch> RowToArrowArrayConverter<T, R>::FinishAndAccumula
 }
 
 template <typename T, typename R>
-Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builder, int32_t* idx) {
-    if (reserved_sizes_[*idx] == -1) {
-        // first batch, reserved_sizes_ is not initialized
-        return Status::OK();
+Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builder, int32_t* idx,
+                                               int32_t num_rows) {
+    // The first slot of every column is its accumulated element count (an EMA across batches),
+    // which also scales the per-row data size estimate of variable-width columns below. It is
+    // used only when the exact count for this level is unknown; -1 means "no history yet".
+    const int32_t accumulated_rows = reserved_sizes_[(*idx)++];
+    // Prefer the exact per-batch count when the caller knows it: reserving precisely avoids both
+    // the doubling memmove of under-reservation and the shrink memcpy of over-reservation, and it
+    // covers the first batch, which has no accumulated history to reserve from.
+    const bool exact = num_rows >= 0;
+    const int32_t reserve_rows = exact ? num_rows : accumulated_rows;
+    if (reserve_rows >= 0) {
+        const int64_t reserve_count =
+            exact ? reserve_rows : static_cast<int64_t>(INFLATION_FACTOR * reserve_rows);
+        PAIMON_RETURN_NOT_OK_FROM_ARROW(array_builder->Reserve(reserve_count));
     }
-    // The first slot of every column is its accumulated row count; it also scales the
-    // per-row data size estimate of variable-width columns below.
-    const int32_t num_rows = reserved_sizes_[(*idx)++];
-    PAIMON_RETURN_NOT_OK_FROM_ARROW(array_builder->Reserve(INFLATION_FACTOR * num_rows));
     arrow::Type::type type = array_builder->type()->id();
     switch (type) {
         case arrow::Type::type::BOOL:
@@ -152,48 +163,55 @@ Status RowToArrowArrayConverter<T, R>::Reserve(arrow::ArrayBuilder* array_builde
             break;
         case arrow::Type::type::STRING: {
             // reserve string data buffer
-            PAIMON_ASSIGN_OR_RAISE(auto* string_builder,
-                                   CastToTypedBuilder<arrow::StringBuilder>(array_builder));
-            PAIMON_RETURN_NOT_OK_FROM_ARROW(
-                string_builder->ReserveData(EstimateDataSize(reserved_sizes_[(*idx)++], num_rows)));
+            const int32_t bytes_per_row = reserved_sizes_[(*idx)++];
+            if (reserve_rows >= 0 && bytes_per_row >= 0) {
+                PAIMON_ASSIGN_OR_RAISE(auto* string_builder,
+                                       CastToTypedBuilder<arrow::StringBuilder>(array_builder));
+                PAIMON_RETURN_NOT_OK_FROM_ARROW(
+                    string_builder->ReserveData(EstimateDataSize(bytes_per_row, reserve_rows)));
+            }
             break;
         }
         case arrow::Type::type::BINARY: {
             // reserve binary data buffer
-            PAIMON_ASSIGN_OR_RAISE(auto* binary_builder,
-                                   CastToTypedBuilder<arrow::BinaryBuilder>(array_builder));
-            PAIMON_RETURN_NOT_OK_FROM_ARROW(
-                binary_builder->ReserveData(EstimateDataSize(reserved_sizes_[(*idx)++], num_rows)));
+            const int32_t bytes_per_row = reserved_sizes_[(*idx)++];
+            if (reserve_rows >= 0 && bytes_per_row >= 0) {
+                PAIMON_ASSIGN_OR_RAISE(auto* binary_builder,
+                                       CastToTypedBuilder<arrow::BinaryBuilder>(array_builder));
+                PAIMON_RETURN_NOT_OK_FROM_ARROW(
+                    binary_builder->ReserveData(EstimateDataSize(bytes_per_row, reserve_rows)));
+            }
             break;
         }
         case arrow::Type::type::LIST: {
             PAIMON_ASSIGN_OR_RAISE(auto* list_builder,
                                    CastToTypedBuilder<arrow::ListBuilder>(array_builder));
-            // reserve value builder in list
-            PAIMON_RETURN_NOT_OK(Reserve(list_builder->value_builder(), idx));
+            // The value builder holds a variable number of elements per row, so its exact count is
+            // unknown; fall back to the accumulated estimate.
+            PAIMON_RETURN_NOT_OK(Reserve(list_builder->value_builder(), idx, /*num_rows=*/-1));
             break;
         }
         case arrow::Type::type::FIXED_SIZE_LIST: {
             PAIMON_ASSIGN_OR_RAISE(auto* list_builder,
                                    CastToTypedBuilder<arrow::FixedSizeListBuilder>(array_builder));
-            PAIMON_RETURN_NOT_OK(Reserve(list_builder->value_builder(), idx));
+            PAIMON_RETURN_NOT_OK(Reserve(list_builder->value_builder(), idx, /*num_rows=*/-1));
             break;
         }
         case arrow::Type::type::MAP: {
             PAIMON_ASSIGN_OR_RAISE(auto* map_builder,
                                    CastToTypedBuilder<arrow::MapBuilder>(array_builder));
             // reserve key builder in map
-            PAIMON_RETURN_NOT_OK(Reserve(map_builder->key_builder(), idx));
+            PAIMON_RETURN_NOT_OK(Reserve(map_builder->key_builder(), idx, /*num_rows=*/-1));
             // reserve item builder in map
-            PAIMON_RETURN_NOT_OK(Reserve(map_builder->item_builder(), idx));
+            PAIMON_RETURN_NOT_OK(Reserve(map_builder->item_builder(), idx, /*num_rows=*/-1));
             break;
         }
         case arrow::Type::type::STRUCT: {
             PAIMON_ASSIGN_OR_RAISE(auto* struct_builder,
                                    CastToTypedBuilder<arrow::StructBuilder>(array_builder));
             for (int32_t i = 0; i < struct_builder->num_fields(); i++) {
-                // reserve item builder in struct
-                PAIMON_RETURN_NOT_OK(Reserve(struct_builder->field_builder(i), idx));
+                // Struct fields hold exactly one element per row, so they share this level's count.
+                PAIMON_RETURN_NOT_OK(Reserve(struct_builder->field_builder(i), idx, num_rows));
             }
             break;
         }

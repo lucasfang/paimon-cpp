@@ -53,7 +53,7 @@ Result<std::unique_ptr<GenericRowToArrowArrayConverter>> GenericRowToArrowArrayC
 
 Result<BatchReader::ReadBatch> GenericRowToArrowArrayConverter::NextBatch(
     const std::vector<GenericRow>& rows) {
-    PAIMON_RETURN_NOT_OK(ResetAndReserve());
+    PAIMON_RETURN_NOT_OK(ResetAndReserve(static_cast<int32_t>(rows.size())));
     PAIMON_RETURN_NOT_OK_FROM_ARROW(
         array_builder_->AppendValues(rows.size(), /*valid_bytes=*/nullptr));
     for (size_t i = 0; i < appenders_.size(); ++i) {

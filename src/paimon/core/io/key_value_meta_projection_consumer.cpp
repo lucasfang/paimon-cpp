@@ -103,7 +103,7 @@ Result<KeyValueBatch> KeyValueMetaProjectionConsumer::NextBatch(
         return Status::Invalid("invalid key value batch, cannot be empty");
     }
     KeyValueBatch key_value_batch;
-    PAIMON_RETURN_NOT_OK(ResetAndReserve());
+    PAIMON_RETURN_NOT_OK(ResetAndReserve(static_cast<int32_t>(key_value_vec.size())));
 
     PAIMON_RETURN_NOT_OK_FROM_ARROW(
         array_builder_->AppendValues(key_value_vec.size(), /*valid_bytes=*/nullptr));
