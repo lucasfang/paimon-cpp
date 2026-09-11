@@ -299,8 +299,8 @@ Status FileStoreScan::ReadFileEntries(const std::vector<ManifestFileMeta>& manif
             if (apply_scan_filter) {
                 PAIMON_RETURN_NOT_OK(ReadManifestFileMeta(meta, &tmp_entries));
             } else {
-                PAIMON_RETURN_NOT_OK(
-                    manifest_file_->Read(meta.FileName(), /*filter=*/nullptr, &tmp_entries));
+                PAIMON_RETURN_NOT_OK(manifest_file_->Read(
+                    meta.FileName(), /*filter=*/nullptr, &tmp_entries, meta.FileSize()));
             }
             return tmp_entries;
         };
@@ -429,8 +429,8 @@ Status FileStoreScan::ReadAndMergeBucketFileEntries(
         for (const auto& meta : manifest_metas) {
             auto read_meta_task = [this, meta, bucket]() -> Result<std::vector<ManifestEntry>> {
                 std::vector<ManifestEntry> bucket_entries;
-                PAIMON_RETURN_NOT_OK(
-                    manifest_file_->ReadBucketEntries(meta.FileName(), bucket, &bucket_entries));
+                PAIMON_RETURN_NOT_OK(manifest_file_->ReadBucketEntries(
+                    meta.FileName(), bucket, &bucket_entries, meta.FileSize()));
                 return bucket_entries;
             };
             futures.push_back(Via(executor_.get(), read_meta_task));
@@ -551,7 +551,7 @@ Status FileStoreScan::ReadManifestFileMeta(const ManifestFileMeta& manifest,
     PAIMON_RETURN_NOT_OK(manifest_file_->Read(
         manifest.FileName(),
         [this](const ManifestEntry& entry) -> Result<bool> { return FilterManifestEntry(entry); },
-        &unfiltered_entries));
+        &unfiltered_entries, manifest.FileSize()));
     entries->reserve(entries->size() + unfiltered_entries.size());
     for (auto& entry : unfiltered_entries) {
         entries->emplace_back(std::move(entry));
