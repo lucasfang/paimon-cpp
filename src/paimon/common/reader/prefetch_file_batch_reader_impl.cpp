@@ -244,7 +244,7 @@ Result<std::unique_ptr<PrefetchFileBatchReaderImpl>> PrefetchFileBatchReaderImpl
                                                          : prefetch_max_parallel_num;
     std::vector<std::future<Result<std::unique_ptr<InputStream>>>> open_futures;
     open_futures.reserve(open_count);
-    auto open_executor = GetDefaultExecutor();
+    auto open_executor = CreateDefaultExecutor();
     for (uint32_t i = 0; i < open_count; i++) {
         open_futures.push_back(
             Via(open_executor.get(), [&fs, &data_file_path, data_file_size]()
