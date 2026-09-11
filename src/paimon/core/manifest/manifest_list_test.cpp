@@ -240,9 +240,8 @@ TEST_F(ManifestListTest, TestReadDataManifestsOpensWithSizeFromSnapshot) {
     ASSERT_TRUE(dir);
     auto fs = std::make_shared<OpenRecordingFileSystem>();
     auto manifest_list = CreateManifestList(fs, "avro", dir->Str(), pool);
-    ManifestFileMeta base_meta =
-        MakeMeta("manifest-base", /*file_size=*/100, /*num_added_files=*/1,
-                 /*num_deleted_files=*/0);
+    ManifestFileMeta base_meta = MakeMeta("manifest-base", /*file_size=*/100, /*num_added_files=*/1,
+                                          /*num_deleted_files=*/0);
     ManifestFileMeta delta_meta =
         MakeMeta("manifest-delta", /*file_size=*/200, /*num_added_files=*/2,
                  /*num_deleted_files=*/1);
@@ -272,9 +271,8 @@ TEST_F(ManifestListTest, TestReadDataManifestsWithoutSizesStillReads) {
     ASSERT_TRUE(dir);
     auto fs = std::make_shared<OpenRecordingFileSystem>();
     auto manifest_list = CreateManifestList(fs, "avro", dir->Str(), pool);
-    ManifestFileMeta base_meta =
-        MakeMeta("manifest-base", /*file_size=*/100, /*num_added_files=*/1,
-                 /*num_deleted_files=*/0);
+    ManifestFileMeta base_meta = MakeMeta("manifest-base", /*file_size=*/100, /*num_added_files=*/1,
+                                          /*num_deleted_files=*/0);
     ManifestFileMeta delta_meta =
         MakeMeta("manifest-delta", /*file_size=*/200, /*num_added_files=*/2,
                  /*num_deleted_files=*/1);

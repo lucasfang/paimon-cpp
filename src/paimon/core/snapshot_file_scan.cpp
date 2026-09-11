@@ -186,8 +186,8 @@ class SnapshotFileCollector {
                     PAIMON_RETURN_NOT_OK(manifest_file_->ReadBucketEntries(
                         meta.FileName(), bucket_id_.value(), &entries, meta.FileSize()));
                 } else {
-                    PAIMON_RETURN_NOT_OK(manifest_file_->Read(
-                        meta.FileName(), /*filter=*/nullptr, &entries, meta.FileSize()));
+                    PAIMON_RETURN_NOT_OK(manifest_file_->Read(meta.FileName(), /*filter=*/nullptr,
+                                                              &entries, meta.FileSize()));
                 }
                 PAIMON_RETURN_NOT_OK(ApplyPartitionFilter(&entries));
                 return ManifestReadResult{meta, std::move(entries)};

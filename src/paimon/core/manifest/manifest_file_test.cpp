@@ -405,8 +405,7 @@ TEST_F(ManifestFileTest, TestReadPassesKnownSizeToOpen) {
     constexpr int64_t kRecordedSize = 2617;
 
     std::vector<ManifestEntry> all_entries;
-    ASSERT_OK(
-        manifest_file->Read(manifest_name, /*filter=*/nullptr, &all_entries, kRecordedSize));
+    ASSERT_OK(manifest_file->Read(manifest_name, /*filter=*/nullptr, &all_entries, kRecordedSize));
     ASSERT_EQ(2, all_entries.size());
     ASSERT_EQ(std::vector<int64_t>({kRecordedSize}), counting_file_system->opened_lengths);
     ASSERT_EQ(0, counting_file_system->open_count);

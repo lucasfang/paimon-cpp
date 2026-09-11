@@ -116,7 +116,7 @@ class ObjectsFile {
 
     /// Opens the file for reading, handing over the length when the caller already has it.
     Result<std::unique_ptr<InputStream>> OpenForRead(const std::string& file_path,
-                                                    const std::optional<int64_t>& file_size) const;
+                                                     const std::optional<int64_t>& file_size) const;
 };
 
 template <typename T>

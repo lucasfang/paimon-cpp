@@ -299,8 +299,8 @@ Status FileStoreScan::ReadFileEntries(const std::vector<ManifestFileMeta>& manif
             if (apply_scan_filter) {
                 PAIMON_RETURN_NOT_OK(ReadManifestFileMeta(meta, &tmp_entries));
             } else {
-                PAIMON_RETURN_NOT_OK(manifest_file_->Read(
-                    meta.FileName(), /*filter=*/nullptr, &tmp_entries, meta.FileSize()));
+                PAIMON_RETURN_NOT_OK(manifest_file_->Read(meta.FileName(), /*filter=*/nullptr,
+                                                          &tmp_entries, meta.FileSize()));
             }
             return tmp_entries;
         };
