@@ -1159,7 +1159,7 @@ JdoStatus JdoFileSystem::openReader(const std::string &path, int64_t file_length
     // The hint is what actually suppresses the getFileStatus on open; the store only reads
     // JDO_OPEN_OPTS_FILE_LENGTH when it is set, and otherwise resolves the status itself.
     auto options = jdo_createOptions();
-    jdo_setOption(options, JDO_OPEN_OPTS_HAS_GET_FILE_STATUS, "true");
+    jdo_setOption(options, JDO_OPEN_OPTS_HAS_GET_FILE_STATUS, "false");
     jdo_setOption(options, JDO_OPEN_OPTS_FILE_LENGTH, std::to_string(file_length).c_str());
 
     START_CALL(store)
