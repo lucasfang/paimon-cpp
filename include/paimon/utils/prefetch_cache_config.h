@@ -119,7 +119,7 @@ class PAIMON_EXPORT CacheConfig {
     //   fetched concurrently rather than in one long request. A read spanning
     //   several of them is still served, as they are adjacent.
     uint64_t range_size_limit_ = 32 * 1024 * 1024;
-    uint64_t late_range_size_limit_ = 8 * 1024 * 1024;
+    uint64_t late_range_size_limit_ = 1 * 1024 * 1024;
     uint64_t hole_size_limit_ = 8 * 1024;
     uint64_t pre_buffer_limit_ = 256 * 1024 * 1024;
     // Blocks are aligned to the END of the file, so a block never reaches past
