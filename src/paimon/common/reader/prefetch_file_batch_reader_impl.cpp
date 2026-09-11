@@ -251,12 +251,12 @@ Result<std::unique_ptr<PrefetchFileBatchReaderImpl>> PrefetchFileBatchReaderImpl
     std::vector<std::future<Result<std::unique_ptr<InputStream>>>> open_futures;
     open_futures.reserve(open_count);
     const auto executor_start = std::chrono::steady_clock::now();
-    auto open_executor = CreateDefaultExecutor();
+    // auto open_executor = CreateDefaultExecutor();
     const uint64_t executor_create_us = ElapsedMicros(executor_start);
     const auto open_start = std::chrono::steady_clock::now();
     for (uint32_t i = 0; i < open_count; i++) {
         open_futures.push_back(
-            Via(open_executor.get(),
+            Via(executor.get(),
                 [&fs, &data_file_path, data_file_size]() -> Result<std::unique_ptr<InputStream>> {
                     return fs->Open(FileStatus(data_file_path, data_file_size));
                 }));
@@ -295,7 +295,7 @@ Result<std::unique_ptr<PrefetchFileBatchReaderImpl>> PrefetchFileBatchReaderImpl
     std::vector<std::future<Result<std::unique_ptr<FileBatchReader>>>> futures;
     futures.reserve(prefetch_max_parallel_num);
     for (uint32_t i = 0; i < prefetch_max_parallel_num; i++) {
-        futures.push_back(Via(open_executor.get(),
+        futures.push_back(Via(executor.get(),
                               [&reader_builder, &cache, &streams, i, next_stream,
                                io_metrics]() -> Result<std::unique_ptr<FileBatchReader>> {
                                   std::unique_ptr<InputStream> input_stream =
