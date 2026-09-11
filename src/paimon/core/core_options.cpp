@@ -402,7 +402,7 @@ struct CoreOptions::Impl {
     int32_t manifest_merge_min_count = 30;
     int32_t scan_manifest_entry_cache_max_snapshots = 0;
     int32_t read_batch_size = 1024;
-    int32_t reader_build_max_parallel_num = 4;
+    int32_t reader_build_max_parallel_num = 96;
     int32_t write_batch_size = 1024;
     int32_t local_sort_max_num_file_handles = 128;
     int32_t commit_max_retries = 10;
