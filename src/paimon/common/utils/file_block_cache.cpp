@@ -20,8 +20,10 @@
 #include "paimon/common/utils/file_block_cache.h"
 
 #include <cstring>
+#include <string>
 
 #include "paimon/common/memory/bytes_utils.h"
+#include "paimon/common/utils/io_trace.h"
 
 namespace paimon {
 
@@ -32,7 +34,8 @@ FileBlockCache::FileBlockCache(const std::shared_ptr<InputStream>& stream, uint6
       file_size_(file_size),
       block_size_(block_size),
       capacity_(capacity),
-      memory_pool_(memory_pool) {}
+      memory_pool_(memory_pool),
+      trace_uri_(io_trace::Uri(stream)) {}
 
 FileBlockCache::~FileBlockCache() {
     // The fetches write into the block buffers, so they must not outlive the
@@ -82,7 +85,18 @@ bool FileBlockCache::Read(const ByteRange& range, char* dest) {
     }
     // Wait and copy OUTSIDE the lock, so that a reader waiting for a fetch does
     // not keep the other readers out of the map.
-    if (!block->future.get().ok()) {
+    //
+    // TEMPORARY: trace how long the reader waits for the fetch of its block, see
+    // io_trace.h. Near zero for a block that is already cached.
+    const bool trace = io_trace::Enabled();
+    const io_trace::Instant wait_started_at = trace ? io_trace::Now() : io_trace::Instant{};
+    const Status fetch_status = block->future.get();
+    if (trace) {
+        io_trace::Emit("block-wait", trace_uri_, range.offset, range.length, wait_started_at,
+                       io_trace::ElapsedMicros(wait_started_at), io_trace::kNotApplicable,
+                       fetch_status.ok() ? "ok" : fetch_status.ToString().c_str());
+    }
+    if (!fetch_status.ok()) {
         // A block fetch reads more than the caller asked for, so its failure must
         // not fail the caller's read: the read goes back to the caller, which
         // reports the real error itself if its own bytes cannot be read either.
@@ -160,9 +174,29 @@ void FileBlockCache::Fetch(const std::shared_ptr<Block>& block) {
     // destination and the future it resolves alive. The buffer keeps the memory
     // pool alive as well, so a callback outliving this cache still frees the
     // buffer against a live pool.
+    //
+    // TEMPORARY: trace the IO this cache issues, see io_trace.h. The uri is
+    // copied into the callback rather than reached for through `this`, which the
+    // thread resolving the fetch may outlive.
+    const bool trace = io_trace::Enabled();
+    io_trace::Instant dispatched_at;
+    if (trace) {
+        dispatched_at = io_trace::Now();
+        io_trace::Emit("block-dispatch", trace_uri_, block->range.offset, block->range.length,
+                       dispatched_at, io_trace::kNotApplicable, io_trace::EnterInflight(), nullptr);
+    }
     stream_->ReadAsync(buffer->data(), static_cast<int64_t>(buffer->size()),
                        static_cast<int64_t>(block->range.offset),
-                       [promise, buffer](Status status) { promise->set_value(status); });
+                       [promise, buffer, trace, dispatched_at, range = block->range,
+                        uri = trace_uri_](Status status) {
+                           if (trace) {
+                               io_trace::Emit("block-done", uri, range.offset, range.length,
+                                              dispatched_at, io_trace::ElapsedMicros(dispatched_at),
+                                              io_trace::LeaveInflight(),
+                                              status.ok() ? "ok" : status.ToString().c_str());
+                           }
+                           promise->set_value(status);
+                       });
 }
 
 }  // namespace paimon

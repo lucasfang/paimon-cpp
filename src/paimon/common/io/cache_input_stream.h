@@ -20,7 +20,9 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
+#include "paimon/common/utils/io_trace.h"
 #include "paimon/common/utils/math.h"
 #include "paimon/common/utils/read_ahead_cache.h"
 #include "paimon/fs/file_system.h"
@@ -38,7 +40,9 @@ class CacheInputStream : public InputStream {
  public:
     CacheInputStream(const std::shared_ptr<InputStream>& input_stream,
                      const std::shared_ptr<ReadAheadCache>& cache)
-        : cache_(cache), input_stream_(input_stream) {}
+        : cache_(cache),
+          input_stream_(input_stream),
+          trace_uri_(io_trace::Uri(input_stream)) {}
 
     Status Seek(int64_t offset, SeekOrigin origin) override {
         return input_stream_->Seek(offset, origin);
@@ -59,7 +63,22 @@ class CacheInputStream : public InputStream {
                 return size;
             }
         }
-        return input_stream_->Read(buffer, size, offset);
+        // TEMPORARY: trace the direct read this stream falls back to on a cache miss, see
+        // io_trace.h. This is the underlying IO the cache did not manage to fold into a prefetch
+        // or a block, and it blocks the reader for its whole duration.
+        const bool trace = io_trace::Enabled();
+        if (!trace) {
+            return input_stream_->Read(buffer, size, offset);
+        }
+        const io_trace::Instant dispatched_at = io_trace::Now();
+        const int64_t inflight = io_trace::EnterInflight();
+        Result<int64_t> result = input_stream_->Read(buffer, size, offset);
+        io_trace::LeaveInflight();
+        io_trace::Emit("miss-read", trace_uri_, static_cast<uint64_t>(offset),
+                       static_cast<uint64_t>(size), dispatched_at,
+                       io_trace::ElapsedMicros(dispatched_at), inflight,
+                       result.ok() ? "ok" : result.status().ToString().c_str());
+        return result;
     }
     void ReadAsync(char* buffer, int64_t size, int64_t offset,
                    std::function<void(Status)>&& callback) override {
@@ -85,7 +104,28 @@ class CacheInputStream : public InputStream {
                 return;
             }
         }
-        return input_stream_->ReadAsync(buffer, size, offset, std::move(callback));
+        // TEMPORARY: trace the async direct read this stream falls back to on a cache miss, the
+        // way the prefetch fetches are traced, with the uri copied into the callback rather than
+        // reached for through `this`, which the thread resolving the read may outlive. See
+        // io_trace.h.
+        const bool trace = io_trace::Enabled();
+        if (!trace) {
+            return input_stream_->ReadAsync(buffer, size, offset, std::move(callback));
+        }
+        const io_trace::Instant dispatched_at = io_trace::Now();
+        io_trace::Emit("miss-read-async-dispatch", trace_uri_, static_cast<uint64_t>(offset),
+                       static_cast<uint64_t>(size), dispatched_at, io_trace::kNotApplicable,
+                       io_trace::EnterInflight(), nullptr);
+        return input_stream_->ReadAsync(
+            buffer, size, offset,
+            [dispatched_at, offset, size, uri = trace_uri_,
+             callback = std::move(callback)](Status status) mutable {
+                io_trace::Emit("miss-read-async-done", uri, static_cast<uint64_t>(offset),
+                               static_cast<uint64_t>(size), dispatched_at,
+                               io_trace::ElapsedMicros(dispatched_at), io_trace::LeaveInflight(),
+                               status.ok() ? "ok" : status.ToString().c_str());
+                callback(status);
+            });
     }
 
     Status Close() override {
@@ -103,6 +143,9 @@ class CacheInputStream : public InputStream {
  private:
     std::shared_ptr<ReadAheadCache> cache_;
     std::shared_ptr<InputStream> input_stream_;
+    // TEMPORARY: the file the traced fallback reads read, resolved once, empty when the tracing is
+    // off. See io_trace.h.
+    std::string trace_uri_;
 };
 
 }  // namespace paimon
