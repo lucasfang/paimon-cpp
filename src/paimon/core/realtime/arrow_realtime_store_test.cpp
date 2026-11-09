@@ -135,9 +135,11 @@ class ArrowRealtimeStoreTest : public testing::Test {
 }  // namespace
 
 TEST_F(ArrowRealtimeStoreTest, TestWriteValidationAndSeal) {
-    ASSERT_OK_AND_ASSIGN(std::optional<std::shared_ptr<RealtimeSegmentHandle>> empty_segment,
-                         store_->SealForCommit());
-    ASSERT_FALSE(empty_segment.has_value());
+    // Moving the optional shared_ptr out of Result triggers GCC 13's
+    // -Wmaybe-uninitialized warning in Release builds. Check the Result directly.
+    auto empty_segment_result = store_->SealForCommit();
+    ASSERT_OK(empty_segment_result);
+    ASSERT_FALSE(empty_segment_result.value().has_value());
 
     ASSERT_NOK_WITH_MSG(store_->Write(RealtimeWriteBatch{nullptr, OffsetRange(0, 1)}),
                         "write batch is null");
@@ -158,8 +160,9 @@ TEST_F(ArrowRealtimeStoreTest, TestWriteValidationAndSeal) {
     ASSERT_TRUE(segment.has_value());
     ASSERT_EQ(OffsetRange(0, 5), segment.value()->GetOffsetRange());
     ASSERT_EQ(4, segment.value()->GetRowCount());
-    ASSERT_OK_AND_ASSIGN(empty_segment, store_->SealForCommit());
-    ASSERT_FALSE(empty_segment.has_value());
+    empty_segment_result = store_->SealForCommit();
+    ASSERT_OK(empty_segment_result);
+    ASSERT_FALSE(empty_segment_result.value().has_value());
 
     ASSERT_GT(store_->GetMemoryUsage(), 0);
 }
@@ -181,9 +184,9 @@ TEST_F(ArrowRealtimeStoreTest, TestDataUsageTracksBuildingSealedAndReclaimedData
     ASSERT_EQ(usage.building_memory_bytes, store_->GetMemoryUsage());
     const uint64_t first_segment_memory = usage.building_memory_bytes;
 
-    ASSERT_OK_AND_ASSIGN(std::optional<std::shared_ptr<RealtimeSegmentHandle>> segment,
-                         store_->SealForCommit());
-    ASSERT_TRUE(segment.has_value());
+    auto segment_result = store_->SealForCommit();
+    ASSERT_OK(segment_result);
+    ASSERT_TRUE(segment_result.value().has_value());
     usage = store_->GetDataUsage();
     ASSERT_EQ(0, usage.building_memory_bytes);
     ASSERT_EQ(first_segment_memory, usage.sealed_memory_bytes);
